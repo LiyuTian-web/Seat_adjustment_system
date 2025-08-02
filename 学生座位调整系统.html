@@ -1,0 +1,2109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学生座位表管理系统 - 自定义行列与固定空位功能</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #e6f7ff 0%, #f0f5ff 100%);
+            min-height: 100vh;
+            padding: 20px;
+            color: #333;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+            position: relative;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #3a7bd5 0%, #00d2ff 100%);
+            color: white;
+            padding: 30px 40px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        header::before {
+            content: "";
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, transparent 70%);
+            transform: rotate(30deg);
+        }
+        
+        h1 {
+            font-size: 2.4rem;
+            margin-bottom: 15px;
+            font-weight: 700;
+            text-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            position: relative;
+        }
+        
+        .subtitle {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            max-width: 700px;
+            margin: 0 auto;
+            line-height: 1.6;
+            position: relative;
+        }
+        
+        .controls {
+            padding: 22px 30px;
+            background: #f8fafd;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #e1e8f0;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            background: #4e73df;
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 10px;
+            font-size: 1.05rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 10px rgba(79, 114, 223, 0.25);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 180px;
+            justify-content: center;
+        }
+        
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 15px rgba(79, 114, 223, 0.35);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn-import {
+            background: linear-gradient(135deg, #1cc88a 0%, #17a673 100%);
+            box-shadow: 0 5px 10px rgba(28, 200, 138, 0.25);
+        }
+        
+        .btn-save {
+            background: linear-gradient(135deg, #f6c23e 0%, #e4b12e 100%);
+            color: #2c3e50;
+            box-shadow: 0 5px 10px rgba(246, 194, 62, 0.25);
+        }
+        
+        .btn-export {
+            background: linear-gradient(135deg, #36b9cc 0%, #2c9faf 100%);
+            box-shadow: 0 5px 10px rgba(54, 185, 204, 0.25);
+        }
+        
+        .btn-random {
+            background: linear-gradient(135deg, #6f42c1 0%, #5530a3 100%);
+            box-shadow: 0 5px 10px rgba(111, 66, 193, 0.25);
+        }
+        
+        .btn-reset {
+            background: linear-gradient(135deg, #e74a3b 0%, #d62c1a 100%);
+            box-shadow: 0 5px 10px rgba(231, 74, 59, 0.25);
+        }
+        
+        .btn-settings {
+            background: linear-gradient(135deg, #858796 0%, #60616f 100%);
+            box-shadow: 0 5px 10px rgba(133, 135, 150, 0.25);
+        }
+        
+        .legend {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            background: rgba(255,255,255,0.8);
+            padding: 12px 20px;
+            border-radius: 10px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+        
+        .legend-color {
+            width: 22px;
+            height: 22px;
+            border-radius: 6px;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+        }
+        
+        .male-color {
+            background: linear-gradient(135deg, #a0d2ff 0%, #6ba8e9 100%);
+            border: 1px solid #6ba8e9;
+        }
+        
+        .female-color {
+            background: linear-gradient(135deg, #d8b4fe 0%, #b185db 100%);
+            border: 1px solid #b185db;
+        }
+        
+        .empty-color {
+            background: linear-gradient(135deg, #ffffff 0%, #f1f1f1 100%);
+            border: 1px solid #ddd;
+        }
+        
+        .fixed-empty-color {
+            background: linear-gradient(135deg, #ffd8d8 0%, #ffb3b3 100%);
+            border: 1px solid #ff6b6b;
+        }
+        
+        .classroom-container {
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .stats-container {
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px 30px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            text-align: center;
+            min-width: 180px;
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+        }
+        
+        .stat-card.male {
+            border-top: 4px solid #6ba8e9;
+        }
+        
+        .stat-card.female {
+            border-top: 4px solid #b185db;
+        }
+        
+        .stat-card.total {
+            border-top: 4px solid #4e73df;
+        }
+        
+        .stat-card.empty {
+            border-top: 4px solid #ff6b6b;
+        }
+        
+        .stat-value {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin: 10px 0;
+        }
+        
+        .stat-label {
+            font-size: 1.1rem;
+            color: #6c757d;
+        }
+        
+        .teacher-desk {
+            width: 320px;
+            height: 85px;
+            background: linear-gradient(to bottom, #8d6e63, #5d4037);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 12px;
+            margin-bottom: 40px;
+            font-weight: bold;
+            font-size: 1.3rem;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+            position: relative;
+        }
+        
+        .rows-container {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+            width: 100%;
+            max-width: 950px;
+            margin: 0 auto;
+        }
+        
+        .row {
+            display: grid;
+            gap: 18px;
+            position: relative;
+        }
+        
+        .row-label {
+            position: absolute;
+            left: -50px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-weight: bold;
+            color: #5a5c69;
+            width: 40px;
+            text-align: center;
+            background: #f0f5ff;
+            padding: 5px;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .seat {
+            height: 90px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 12px;
+            cursor: grab;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            position: relative;
+        }
+        
+        .seat.male {
+            background: linear-gradient(135deg, #a0d2ff 0%, #6ba8e9 100%);
+            border: 2px solid #6ba8e9;
+        }
+        
+        .seat.female {
+            background: linear-gradient(135deg, #d8b4fe 0%, #b185db 100%);
+            border: 2px solid #b185db;
+        }
+        
+        .seat.empty {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fc 100%);
+            border: 2px dashed #c2cfe0;
+            color: #888;
+        }
+        
+        .seat.fixed-empty {
+            background: linear-gradient(135deg, #ffeaea 0%, #ffd6d6 100%);
+            border: 2px dashed #ff6b6b;
+            color: #d32f2f;
+        }
+        
+        .seat.dragging {
+            opacity: 0.7;
+            transform: scale(0.97);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+        
+        .seat.over {
+            border: 2px dashed #4e73df;
+            background: rgba(78, 115, 223, 0.15);
+        }
+        
+        .seat.invalid {
+            box-shadow: 0 0 0 3px #e74a3b;
+            animation: pulse 1.5s infinite;
+        }
+        
+        .seat-number {
+            position: absolute;
+            top: 6px;
+            left: 10px;
+            font-size: 0.8rem;
+            color: #555;
+            font-weight: bold;
+            background: rgba(255, 255, 255, 0.3);
+            padding: 2px 6px;
+            border-radius: 10px;
+        }
+        
+        .student-name {
+            font-weight: 600;
+            font-size: 1.05rem;
+            text-align: center;
+            margin-top: 8px;
+        }
+        
+        .student-gender {
+            font-size: 0.85rem;
+            margin-top: 4px;
+            color: #555;
+        }
+        
+        .instructions {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f0f8ff;
+            border-radius: 12px;
+            border-left: 5px solid #4e73df;
+            font-size: 0.95rem;
+            max-width: 900px;
+            line-height: 1.7;
+        }
+        
+        .instructions h3 {
+            margin-bottom: 12px;
+            color: #2c3e50;
+        }
+        
+        .instructions ul {
+            padding-left: 25px;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 25px;
+            color: #6c757d;
+            font-size: 0.95rem;
+            border-top: 1px solid #eaeef5;
+            margin-top: 20px;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+        
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: 0;
+            top: 0;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        
+        .import-section {
+            background: #eef5ff;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px auto;
+            max-width: 800px;
+            text-align: center;
+        }
+        
+        .template-download {
+            margin-top: 15px;
+            color: #4e73df;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: 500;
+        }
+        
+        .template-download:hover {
+            text-decoration: underline;
+        }
+        
+        .settings-panel {
+            background: #eef5ff;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 15px auto;
+            max-width: 800px;
+        }
+        
+        .settings-title {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            color: #2c3e50;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .settings-content {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        
+        .setting-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .setting-item label {
+            font-weight: 500;
+            min-width: 120px;
+        }
+        
+        .setting-item input {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            width: 80px;
+            font-size: 1rem;
+            text-align: center;
+        }
+        
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .toggle-slider {
+            background-color: #4e73df;
+        }
+        
+        input:checked + .toggle-slider:before {
+            transform: translateX(26px);
+        }
+        
+        /* 空位选择模态框优化 */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
+            width: 95%;
+            max-width: 1200px;
+            max-height: 90vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .modal-header {
+            background: linear-gradient(135deg, #3a7bd5 0%, #00d2ff 100%);
+            color: white;
+            padding: 25px;
+            text-align: center;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .modal-header h2 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+        
+        .modal-header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        
+        .modal-body {
+            padding: 20px;
+            overflow: auto;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+        }
+        
+        .selection-info {
+            background: #f0f8ff;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 1.1rem;
+            font-weight: 500;
+            width: 100%;
+            max-width: 900px;
+            text-align: center;
+            border: 2px solid #c2d6ff;
+        }
+        
+        .selection-container {
+            position: relative;
+            width: fit-content;
+            margin: 0 auto;
+            border: 2px solid #e0e6ff;
+            border-radius: 12px;
+            overflow: auto;
+            padding: 20px;
+            background: #f8faff;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            transform-origin: center center;
+            transform: scale(1);
+            transition: transform 0.3s;
+        }
+        
+        .selection-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .selection-row {
+            display: grid;
+            gap: 15px;
+        }
+        
+        .selection-seat {
+            height: 70px;
+            width: 70px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #f8f9fc 0%, #e9ecef 100%);
+            border: 2px solid #dee2e6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            font-size: 1rem;
+            color: #6c757d;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+            position: relative;
+        }
+        
+        .selection-seat.selected {
+            background: linear-gradient(135deg, #e74a3b 0%, #d62c1a 100%);
+            color: white;
+            border-color: #d62c1a;
+            transform: scale(1.05);
+        }
+        
+        .modal-footer {
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            background: #f8fafd;
+            border-top: 1px solid #e1e8f0;
+        }
+        
+        .modal-btn {
+            padding: 14px 35px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .modal-btn.confirm {
+            background: linear-gradient(135deg, #1a936f 0%, #0d8a62 100%);
+            color: white;
+        }
+        
+        .modal-btn.cancel {
+            background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+            color: white;
+        }
+        
+        .modal-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 7px 15px rgba(0,0,0,0.15);
+        }
+        
+        .zoom-controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 10;
+        }
+        
+        .zoom-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: white;
+            border: 1px solid #dee2e6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+            transition: all 0.2s;
+        }
+        
+        .zoom-btn:hover {
+            background: #f0f0f0;
+            transform: scale(1.1);
+        }
+        
+        .navigation-hint {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(231, 74, 59, 0.7); }
+            70% { box-shadow: 0 0 0 8px rgba(231, 74, 59, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(231, 74, 59, 0); }
+        }
+        
+        @media (max-width: 900px) {
+            .row {
+                gap: 12px;
+            }
+            .seat {
+                height: 80px;
+                padding: 10px;
+            }
+            .student-name {
+                font-size: 0.95rem;
+            }
+            .btn {
+                min-width: 160px;
+                padding: 12px 20px;
+            }
+            .selection-seat {
+                height: 50px;
+                width: 50px;
+                font-size: 0.9rem;
+            }
+            .stats-container {
+                gap: 20px;
+            }
+            .stat-card {
+                padding: 15px 20px;
+                min-width: 140px;
+            }
+            .stat-value {
+                font-size: 1.8rem;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .btn-group {
+                width: 100%;
+                justify-content: center;
+            }
+            .row {
+                grid-template-columns: repeat(4, 1fr);
+                gap: 15px;
+            }
+            .row-label {
+                left: 10px;
+                top: -30px;
+                transform: none;
+            }
+            .teacher-desk {
+                width: 250px;
+                height: 70px;
+                font-size: 1.1rem;
+            }
+            .selection-seat {
+                height: 40px;
+                width: 40px;
+                font-size: 0.8rem;
+            }
+            .modal-header h2 {
+                font-size: 1.6rem;
+            }
+            .zoom-controls {
+                top: 5px;
+                right: 5px;
+            }
+            .zoom-btn {
+                width: 35px;
+                height: 35px;
+                font-size: 1rem;
+            }
+            .stat-card {
+                min-width: 120px;
+                padding: 12px 15px;
+            }
+            .stat-value {
+                font-size: 1.5rem;
+            }
+            .settings-content {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+        
+        .row-col-inputs {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        
+        .row-col-input {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .row-col-input label {
+            font-weight: 500;
+            color: #5a5c69;
+        }
+        
+        .row-col-input input {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            width: 100px;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+        
+        .update-layout-btn {
+            background: #4e73df;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-left: 10px;
+        }
+        
+        .update-layout-btn:hover {
+            background: #2e59d9;
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>学生座位表管理系统</h1>
+            <div class="subtitle">自定义行列布局 | 固定空位功能 | Excel导入 | 随机排座 | 一键导出</div>
+        </header>
+        
+        <div class="controls">
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="legend-color male-color"></div>
+                    <span>男生</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color female-color"></div>
+                    <span>女生</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color empty-color"></div>
+                    <span>空位</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-color fixed-empty-color"></div>
+                    <span>固定空位</span>
+                </div>
+            </div>
+            
+            <div class="btn-group">
+                <div class="file-input-wrapper">
+                    <button class="btn btn-import">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        导入Excel名单
+                    </button>
+                    <input type="file" id="fileInput" accept=".xlsx, .xls">
+                </div>
+                
+                <button id="randomBtn" class="btn btn-random">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M18 3a3 3 0 1 0 0 6 3 3 0 1 0 0-6zM6 9a3 3 0 1 0 0 6 3 3 0 1 0 0-6"></path>
+                        <path d="M18 9a9 9 0 0 1-9 9M6 3a9 9 0 0 0 9 9"></path>
+                    </svg>
+                    随机排座位
+                </button>
+                
+                <button id="resetBtn" class="btn btn-reset">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M2.5 2v6h6M2.66 15.57a10 10 0 1 0 .57-8.38"></path>
+                    </svg>
+                    重置座位表
+                </button>
+                
+                <button id="saveBtn" class="btn btn-save">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                        <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                        <polyline points="7 3 7 8 15 8"></polyline>
+                    </svg>
+                    保存HTML
+                </button>
+                
+                <button id="exportExcelBtn" class="btn btn-export">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <path d="M16 13H8"></path>
+                        <path d="M16 17H8"></path>
+                        <path d="M10 9H8"></path>
+                    </svg>
+                    导出Excel
+                </button>
+            </div>
+        </div>
+        
+        <div class="settings-panel">
+            <h3 class="settings-title">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+                座位布局设置
+            </h3>
+            <div class="settings-content">
+                <div class="setting-item">
+                    <label for="rowsInput">行数：</label>
+                    <input type="number" id="rowsInput" min="1" max="20" value="9">
+                </div>
+                
+                <div class="setting-item">
+                    <label for="colsInput">列数：</label>
+                    <input type="number" id="colsInput" min="1" max="20" value="8">
+                </div>
+                
+                <div class="setting-item">
+                    <label for="genderSeparation">男女生不能相邻</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="genderSeparation" checked>
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+            
+            <div style="margin-top: 20px; display: flex; justify-content: center;">
+                <button id="updateLayoutBtn" class="update-layout-btn">更新座位布局</button>
+            </div>
+        </div>
+        
+        <div class="import-section">
+            <p>请上传Excel文件，格式要求：第一列序号，第二列性别（男/女），第三列姓名</p>
+            <a href="#" id="downloadTemplate" class="template-download">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
+                下载Excel模板
+            </a>
+        </div>
+        
+        <div class="classroom-container">
+            <div class="stats-container">
+                <div class="stat-card male">
+                    <div class="stat-label">男生人数</div>
+                    <div class="stat-value" id="maleCount">0</div>
+                </div>
+                <div class="stat-card female">
+                    <div class="stat-label">女生人数</div>
+                    <div class="stat-value" id="femaleCount">0</div>
+                </div>
+                <div class="stat-card total">
+                    <div class="stat-label">总人数</div>
+                    <div class="stat-value" id="totalCount">0</div>
+                </div>
+                <div class="stat-card empty">
+                    <div class="stat-label">固定空位</div>
+                    <div class="stat-value" id="fixedEmptyCount">0</div>
+                </div>
+            </div>
+            
+            <div class="teacher-desk">讲台</div>
+            
+            <div class="rows-container" id="seatingChart">
+                <!-- 座位将通过JavaScript动态生成 -->
+            </div>
+            
+            <div class="instructions">
+                <h3>使用说明</h3>
+                <ul>
+                    <li><strong>设置布局</strong>：在座位布局设置中定义教室的行数和列数，点击"更新座位布局"按钮应用设置</li>
+                    <li><strong>导入名单</strong>：点击"导入Excel名单"按钮上传Excel文件（格式：序号、性别、姓名）</li>
+                    <li><strong>固定空位</strong>：导入学生名单后，系统会要求您选择需要保留为空位的位置，这些位置将始终保持为空</li>
+                    <li><strong>随机排座</strong>：点击"随机排座位"按钮将学生随机分配到座位上（固定空位保持不变）</li>
+                    <li><strong>手动调整</strong>：拖拽学生卡片可以交换位置（不能拖动到固定空位）</li>
+                    <li><strong>导出功能</strong>：导出HTML文件用于存档，导出Excel文件用于打印</li>
+                    <li><strong>重置座位</strong>：点击"重置座位表"按钮清除所有学生数据</li>
+                    <li>座位表数据会自动保存在浏览器中，下次打开时恢复</li>
+                </ul>
+            </div>
+        </div>
+        
+        <footer>
+            学生座位表管理系统 - 自定义行列布局 &copy; 2023 | 让教室管理更科学、更高效
+        </footer>
+    </div>
+    
+    <!-- 空位选择模态框 -->
+    <div id="emptySeatsModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>选择固定空位位置</h2>
+                <p>请选择需要保留为空位的位置（<span id="requiredEmptyCount">0</span>个）</p>
+            </div>
+            <div class="modal-body">
+                <div class="selection-info">
+                    已选择 <span id="selectedCount">0</span> 个位置（还需选择 <span id="remainingCount">0</span> 个）
+                </div>
+                
+                <div class="selection-container" id="selectionContainer">
+                    <div class="zoom-controls">
+                        <div class="zoom-btn" id="zoomIn">+</div>
+                        <div class="zoom-btn" id="zoomOut">-</div>
+                    </div>
+                    
+                    <div class="selection-grid" id="selectionGrid">
+                        <!-- 空位选择网格将通过JavaScript动态生成 -->
+                    </div>
+                    
+                    <div class="navigation-hint">提示：可以拖动和缩放座位表以查看所有位置</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn confirm" id="confirmSelection">确认选择</button>
+                <button class="modal-btn cancel" id="cancelSelection">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let rows = 9;
+        let cols = 8;
+        let seats = [];
+        let fixedEmptySeats = [];
+        let students = [];
+        let requiredEmptySeats = 0;
+        let selectedEmptySeats = [];
+        
+        // 初始空座位数据 (根据行列设置)
+        function createEmptySeats() {
+            const seats = [];
+            
+            for (let i = 0; i < rows; i++) {
+                const row = [];
+                for (let j = 0; j < cols; j++) {
+                    row.push({ 
+                        name: "", 
+                        gender: "",
+                        isFixedEmpty: false // 标记是否为固定空位
+                    });
+                }
+                seats.push(row);
+            }
+            return seats;
+        }
+        
+        // 更新人数统计
+        function updateStatistics() {
+            let maleCount = 0;
+            let femaleCount = 0;
+            let fixedEmptyCount = 0;
+            
+            // 遍历所有座位统计人数
+            seats.forEach(row => {
+                row.forEach(seat => {
+                    if (seat.name) {
+                        if (seat.gender === 'male') {
+                            maleCount++;
+                        } else if (seat.gender === 'female') {
+                            femaleCount++;
+                        }
+                    }
+                    if (seat.isFixedEmpty) {
+                        fixedEmptyCount++;
+                    }
+                });
+            });
+            
+            const totalCount = maleCount + femaleCount;
+            
+            // 更新DOM
+            document.getElementById('maleCount').textContent = maleCount;
+            document.getElementById('femaleCount').textContent = femaleCount;
+            document.getElementById('totalCount').textContent = totalCount;
+            document.getElementById('fixedEmptyCount').textContent = fixedEmptyCount;
+        }
+        
+        // 渲染座位表
+        function renderSeatingChart() {
+            const container = document.getElementById('seatingChart');
+            container.innerHTML = '';
+            
+            // 设置每行的列数
+            container.style.setProperty('--col-count', cols);
+            
+            seats.forEach((row, rowIndex) => {
+                const rowElement = document.createElement('div');
+                rowElement.className = 'row';
+                rowElement.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+                
+                // 添加行标签
+                const rowLabel = document.createElement('div');
+                rowLabel.className = 'row-label';
+                rowLabel.textContent = `第${rowIndex + 1}排`;
+                rowElement.appendChild(rowLabel);
+                
+                row.forEach((seat, seatIndex) => {
+                    const seatElement = document.createElement('div');
+                    
+                    // 根据座位状态设置样式
+                    if (seat.isFixedEmpty) {
+                        seatElement.className = 'seat fixed-empty';
+                    } else if (seat.name) {
+                        seatElement.className = `seat ${seat.gender}`;
+                    } else {
+                        seatElement.className = 'seat empty';
+                    }
+                    
+                    seatElement.setAttribute('draggable', seat.name ? 'true' : 'false');
+                    seatElement.dataset.row = rowIndex;
+                    seatElement.dataset.col = seatIndex;
+                    
+                    // 添加座位编号
+                    const seatNumber = document.createElement('div');
+                    seatNumber.className = 'seat-number';
+                    seatNumber.textContent = `${rowIndex + 1}-${seatIndex + 1}`;
+                    seatElement.appendChild(seatNumber);
+                    
+                    // 添加学生信息
+                    if (seat.name) {
+                        const nameElement = document.createElement('div');
+                        nameElement.className = 'student-name';
+                        nameElement.textContent = seat.name;
+                        seatElement.appendChild(nameElement);
+                        
+                        const genderElement = document.createElement('div');
+                        genderElement.className = 'student-gender';
+                        genderElement.textContent = seat.gender === 'male' ? '男生' : '女生';
+                        seatElement.appendChild(genderElement);
+                    } else if (seat.isFixedEmpty) {
+                        const fixedElement = document.createElement('div');
+                        fixedElement.className = 'student-name';
+                        fixedElement.textContent = '固定空位';
+                        fixedElement.style.color = '#d32f2f';
+                        fixedElement.style.fontWeight = 'bold';
+                        seatElement.appendChild(fixedElement);
+                    } else {
+                        const emptyElement = document.createElement('div');
+                        emptyElement.className = 'student-name';
+                        emptyElement.textContent = '空';
+                        seatElement.appendChild(emptyElement);
+                    }
+                    
+                    // 拖拽事件（固定空位不可拖拽）
+                    if (!seat.isFixedEmpty) {
+                        seatElement.addEventListener('dragstart', handleDragStart);
+                        seatElement.addEventListener('dragover', handleDragOver);
+                        seatElement.addEventListener('dragenter', handleDragEnter);
+                        seatElement.addEventListener('dragleave', handleDragLeave);
+                        seatElement.addEventListener('drop', handleDrop);
+                        seatElement.addEventListener('dragend', handleDragEnd);
+                    }
+                    
+                    rowElement.appendChild(seatElement);
+                });
+                
+                container.appendChild(rowElement);
+            });
+            
+            // 更新人数统计
+            updateStatistics();
+        }
+        
+        // 拖拽相关变量
+        let draggedSeat = null;
+        
+        // 拖拽事件处理函数
+        function handleDragStart(e) {
+            draggedSeat = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', '');
+        }
+        
+        function handleDragOver(e) {
+            e.preventDefault();
+            return false;
+        }
+        
+        function handleDragEnter(e) {
+            // 检查目标座位是否是固定空位
+            if (!this.classList.contains('fixed-empty')) {
+                this.classList.add('over');
+            }
+        }
+        
+        function handleDragLeave(e) {
+            this.classList.remove('over');
+        }
+        
+        function handleDrop(e) {
+            e.preventDefault();
+            this.classList.remove('over');
+            
+            // 如果目标座位是固定空位，则不执行交换
+            if (this.classList.contains('fixed-empty')) {
+                return false;
+            }
+            
+            if (draggedSeat !== this) {
+                // 获取座位坐标
+                const fromRow = parseInt(draggedSeat.dataset.row);
+                const fromCol = parseInt(draggedSeat.dataset.col);
+                const toRow = parseInt(this.dataset.row);
+                const toCol = parseInt(this.dataset.col);
+                
+                // 交换座位数据（固定空位除外）
+                if (!seats[toRow][toCol].isFixedEmpty && !seats[fromRow][fromCol].isFixedEmpty) {
+                    [seats[fromRow][fromCol], seats[toRow][toCol]] = 
+                    [seats[toRow][toCol], seats[fromRow][fromCol]];
+                    
+                    // 保存到localStorage
+                    localStorage.setItem('classroomSeats', JSON.stringify(seats));
+                    
+                    // 重新渲染
+                    renderSeatingChart();
+                }
+            }
+            
+            return false;
+        }
+        
+        function handleDragEnd(e) {
+            this.classList.remove('dragging');
+            document.querySelectorAll('.seat').forEach(seat => {
+                seat.classList.remove('over');
+            });
+        }
+        
+        // 保存座位表为HTML文件
+        function saveSeatingChart() {
+            const htmlContent = `
+                <!DOCTYPE html>
+                <html lang="zh-CN">
+                <head>
+                    <meta charset="UTF-8">
+                    <title>学生座位表 - ${new Date().toLocaleDateString()}</title>
+                    <style>
+                        body {
+                            font-family: 'Microsoft YaHei', sans-serif;
+                            padding: 30px;
+                            background-color: #f8fafd;
+                        }
+                        .header {
+                            text-align: center;
+                            margin-bottom: 40px;
+                            padding: 25px;
+                            background: linear-gradient(135deg, #3a7bd5 0%, #00d2ff 100%);
+                            color: white;
+                            border-radius: 15px;
+                            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+                        }
+                        .header h1 {
+                            margin-bottom: 15px;
+                            font-size: 2.2rem;
+                        }
+                        .class-info {
+                            display: flex;
+                            justify-content: center;
+                            gap: 40px;
+                            margin-top: 25px;
+                            font-size: 1.2rem;
+                        }
+                        .container {
+                            max-width: 1000px;
+                            margin: 0 auto;
+                        }
+                        .teacher-desk {
+                            width: 320px;
+                            height: 85px;
+                            background: linear-gradient(to bottom, #8d6e63, #5d4037);
+                            color: white;
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            border-radius: 12px;
+                            margin: 0 auto 45px;
+                            font-weight: bold;
+                            font-size: 1.4rem;
+                            box-shadow: 0 8px 18px rgba(0,0,0,0.15);
+                        }
+                        .rows-container {
+                            display: flex;
+                            flex-direction: column;
+                            gap: 25px;
+                        }
+                        .row {
+                            display: grid;
+                            grid-template-columns: repeat(${cols}, 1fr);
+                            gap: 20px;
+                            position: relative;
+                        }
+                        .row-label {
+                            position: absolute;
+                            left: -60px;
+                            top: 50%;
+                            transform: translateY(-50%);
+                            font-weight: bold;
+                            color: #5a5c69;
+                            width: 50px;
+                            text-align: center;
+                            background: #f0f5ff;
+                            padding: 8px;
+                            border-radius: 8px;
+                            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+                            font-size: 1.1rem;
+                        }
+                        .seat {
+                            height: 95px;
+                            border-radius: 12px;
+                            display: flex;
+                            flex-direction: column;
+                            justify-content: center;
+                            align-items: center;
+                            padding: 12px;
+                            box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+                            position: relative;
+                        }
+                        .seat.male {
+                            background: linear-gradient(135deg, #a0d2ff 0%, #6ba8e9 100%);
+                            border: 2px solid #6ba8e9;
+                        }
+                        .seat.female {
+                            background: linear-gradient(135deg, #d8b4fe 0%, #b185db 100%);
+                            border: 2px solid #b185db;
+                        }
+                        .seat.empty {
+                            background: linear-gradient(135deg, #ffffff 0%, #f8f9fc 100%);
+                            border: 2px dashed #c2cfe0;
+                            color: #888;
+                        }
+                        .seat.fixed-empty {
+                            background: linear-gradient(135deg, #ffeaea 0%, #ffd6d6 100%);
+                            border: 2px dashed #ff6b6b;
+                            color: #d32f2f;
+                        }
+                        .seat-number {
+                            position: absolute;
+                            top: 8px;
+                            left: 12px;
+                            font-size: 0.9rem;
+                            color: #555;
+                            font-weight: bold;
+                        }
+                        .student-name {
+                            font-weight: 700;
+                            font-size: 1.1rem;
+                            text-align: center;
+                            margin-top: 8px;
+                        }
+                        .student-gender {
+                            font-size: 0.9rem;
+                            margin-top: 5px;
+                            color: #555;
+                        }
+                        .footer {
+                            text-align: center;
+                            margin-top: 45px;
+                            padding: 25px;
+                            color: #6c757d;
+                            font-size: 0.95rem;
+                            border-top: 1px solid #eaeef5;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="header">
+                            <h1>学生座位表</h1>
+                            <p>生成时间: ${new Date().toLocaleString()}</p>
+                            <div class="class-info">
+                                <div>班主任：张老师</div>
+                                <div>班级：三年级二班</div>
+                                <div>布局：${rows}行 × ${cols}列</div>
+                            </div>
+                        </div>
+                        
+                        <div class="teacher-desk">讲台</div>
+                        
+                        <div class="rows-container">
+                            ${seats.map((row, rowIndex) => `
+                                <div class="row">
+                                    <div class="row-label">第${rowIndex + 1}排</div>
+                                    ${row.map((seat, colIndex) => `
+                                        <div class="seat ${seat.isFixedEmpty ? 'fixed-empty' : (seat.gender || 'empty')}">
+                                            <div class="seat-number">${rowIndex + 1}-${colIndex + 1}</div>
+                                            ${seat.name ? `
+                                                <div class="student-name">${seat.name}</div>
+                                                <div class="student-gender">${seat.gender === 'male' ? '男生' : '女生'}</div>
+                                            ` : seat.isFixedEmpty ? `
+                                                <div class="student-name" style="color:#d32f2f;font-weight:bold;">固定空位</div>
+                                            ` : `
+                                                <div class="student-name">空</div>
+                                            `}
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            `).join('')}
+                        </div>
+                        
+                        <div class="footer">
+                            学生座位表管理系统 &copy; 2023 | 生成时间: ${new Date().toLocaleString()}
+                        </div>
+                    </div>
+                </body>
+                </html>
+            `;
+            
+            // 创建下载链接
+            const blob = new Blob([htmlContent], {type: 'text/html'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `学生座位表_${new Date().toISOString().slice(0, 10)}.html`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        // 导出Excel座位表
+        function exportSeatingChartToExcel() {
+            // 创建工作簿
+            const wb = XLSX.utils.book_new();
+            
+            // 创建工作表数据
+            const wsData = [];
+            
+            // 添加标题行
+            const titleRow = ['', '座位表 - 三年级二班'];
+            for (let i = 0; i < cols - 1; i++) {
+                titleRow.push('');
+            }
+            wsData.push(titleRow);
+            
+            // 添加生成时间
+            const timeRow = ['', `生成时间: ${new Date().toLocaleString()}`];
+            for (let i = 0; i < cols - 1; i++) {
+                timeRow.push('');
+            }
+            wsData.push(timeRow);
+            
+            // 添加布局信息
+            const layoutRow = ['', `布局: ${rows}行 × ${cols}列`];
+            for (let i = 0; i < cols - 1; i++) {
+                layoutRow.push('');
+            }
+            wsData.push(layoutRow);
+            
+            // 添加空行
+            wsData.push([]);
+            
+            // 添加表头
+            const headerRow = ['排/列'];
+            for (let i = 0; i < cols; i++) {
+                headerRow.push(`${i + 1}`);
+            }
+            wsData.push(headerRow);
+            
+            // 添加座位数据
+            for (let i = 0; i < rows; i++) {
+                const rowData = [`第${i+1}排`];
+                
+                for (let j = 0; j < cols; j++) {
+                    const seat = seats[i][j];
+                    if (seat.name) {
+                        rowData.push(`${seat.name} (${seat.gender === 'male' ? '男' : '女'})`);
+                    } else if (seat.isFixedEmpty) {
+                        rowData.push('固定空位');
+                    } else {
+                        rowData.push('空');
+                    }
+                }
+                
+                wsData.push(rowData);
+            }
+            
+            // 添加空行
+            wsData.push([]);
+            wsData.push([]);
+            
+            // 添加统计信息
+            const statsRow = ['班级统计信息'];
+            for (let i = 0; i < cols - 1; i++) {
+                statsRow.push('');
+            }
+            wsData.push(statsRow);
+            
+            const maleCount = document.getElementById('maleCount').textContent;
+            const femaleCount = document.getElementById('femaleCount').textContent;
+            const totalCount = document.getElementById('totalCount').textContent;
+            const fixedEmptyCount = document.getElementById('fixedEmptyCount').textContent;
+            
+            wsData.push(['男生人数', maleCount]);
+            wsData.push(['女生人数', femaleCount]);
+            wsData.push(['总人数', totalCount]);
+            wsData.push(['固定空位数', fixedEmptyCount]);
+            wsData.push(['生成时间', new Date().toLocaleString()]);
+            
+            // 创建工作表
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            
+            // 设置列宽
+            const colWidths = [{ wch: 10 }];  // 第一列（排号）
+            for (let i = 0; i < cols; i++) {
+                colWidths.push({ wch: 20 });
+            }
+            ws['!cols'] = colWidths;
+            
+            // 设置行高
+            for (let i = 0; i < wsData.length; i++) {
+                if (i >= 4 && i < 4 + rows) { // 座位行
+                    ws['!rows'] = ws['!rows'] || [];
+                    ws['!rows'][i] = { hpx: 40 };
+                }
+            }
+            
+            // 合并标题单元格
+            ws['!merges'] = [
+                { s: { r: 0, c: 1 }, e: { r: 0, c: cols } },
+                { s: { r: 1, c: 1 }, e: { r: 1, c: cols } },
+                { s: { r: 2, c: 1 }, e: { r: 2, c: cols } },
+                { s: { r: 4 + rows + 1, c: 0 }, e: { r: 4 + rows + 1, c: cols } }
+            ];
+            
+            // 添加工作表到工作簿
+            XLSX.utils.book_append_sheet(wb, ws, "座位表");
+            
+            // 生成Excel文件并下载
+            XLSX.writeFile(wb, `学生座位表_${new Date().toISOString().slice(0, 10)}.xlsx`);
+        }
+        
+        // 处理Excel导入
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            // 检查是否设置了行列数
+            if (rows === 0 || cols === 0) {
+                alert("请先设置教室的行数和列数！");
+                document.getElementById('rowsInput').focus();
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                
+                // 获取第一个工作表
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+                
+                // 处理数据（跳过标题行）
+                students = [];
+                for (let i = 1; i < jsonData.length; i++) {
+                    const row = jsonData[i];
+                    if (row.length >= 3) {
+                        const gender = row[1] === '男' ? 'male' : (row[1] === '女' ? 'female' : '');
+                        students.push({
+                            name: row[2] || '',
+                            gender: gender
+                        });
+                    }
+                }
+                
+                // 计算需要空出的位置数
+                const totalSeats = rows * cols;
+                requiredEmptySeats = totalSeats - students.length;
+                
+                if (requiredEmptySeats < 0) {
+                    alert(`学生数量(${students.length})超过座位总数(${totalSeats})，请调整教室布局或学生名单！`);
+                    return;
+                }
+                
+                if (requiredEmptySeats > 0) {
+                    // 显示空位选择模态框
+                    showEmptySeatsModal();
+                } else {
+                    // 没有空位，直接填充学生
+                    fillStudents([]);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+            
+            // 重置文件输入，允许再次选择相同文件
+            e.target.value = '';
+        }
+        
+        // 显示空位选择模态框
+        function showEmptySeatsModal() {
+            const modal = document.getElementById('emptySeatsModal');
+            const requiredCountEl = document.getElementById('requiredEmptyCount');
+            const selectedCountEl = document.getElementById('selectedCount');
+            const remainingCountEl = document.getElementById('remainingCount');
+            const grid = document.getElementById('selectionGrid');
+            const container = document.getElementById('selectionContainer');
+            
+            // 重置选择
+            selectedEmptySeats = [];
+            
+            // 更新计数
+            requiredCountEl.textContent = requiredEmptySeats;
+            selectedCountEl.textContent = '0';
+            remainingCountEl.textContent = requiredEmptySeats;
+            
+            // 创建选择网格
+            grid.innerHTML = '';
+            
+            for (let i = 0; i < rows; i++) {
+                const row = document.createElement('div');
+                row.className = 'selection-row';
+                row.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+                
+                for (let j = 0; j < cols; j++) {
+                    const seat = document.createElement('div');
+                    seat.className = 'selection-seat';
+                    seat.textContent = `${i+1}-${j+1}`;
+                    seat.dataset.row = i;
+                    seat.dataset.col = j;
+                    
+                    seat.addEventListener('click', function() {
+                        const rowIdx = parseInt(this.dataset.row);
+                        const colIdx = parseInt(this.dataset.col);
+                        const seatKey = `${rowIdx}-${colIdx}`;
+                        
+                        // 检查是否已选择
+                        const index = selectedEmptySeats.indexOf(seatKey);
+                        
+                        if (index === -1) {
+                            // 检查是否达到最大选择数
+                            if (selectedEmptySeats.length < requiredEmptySeats) {
+                                selectedEmptySeats.push(seatKey);
+                                this.classList.add('selected');
+                            }
+                        } else {
+                            selectedEmptySeats.splice(index, 1);
+                            this.classList.remove('selected');
+                        }
+                        
+                        // 更新计数
+                        selectedCountEl.textContent = selectedEmptySeats.length;
+                        remainingCountEl.textContent = requiredEmptySeats - selectedEmptySeats.length;
+                    });
+                    
+                    row.appendChild(seat);
+                }
+                
+                grid.appendChild(row);
+            }
+            
+            // 添加拖动功能
+            let isDragging = false;
+            let startX, startY, scrollLeft, scrollTop;
+            
+            container.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                startX = e.pageX - container.offsetLeft;
+                startY = e.pageY - container.offsetTop;
+                scrollLeft = container.scrollLeft;
+                scrollTop = container.scrollTop;
+                container.style.cursor = 'grabbing';
+            });
+            
+            container.addEventListener('mouseleave', () => {
+                isDragging = false;
+                container.style.cursor = 'grab';
+            });
+            
+            container.addEventListener('mouseup', () => {
+                isDragging = false;
+                container.style.cursor = 'grab';
+            });
+            
+            container.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                e.preventDefault();
+                const x = e.pageX - container.offsetLeft;
+                const y = e.pageY - container.offsetTop;
+                const walkX = (x - startX) * 2; // 滚动速度
+                const walkY = (y - startY) * 2;
+                container.scrollLeft = scrollLeft - walkX;
+                container.scrollTop = scrollTop - walkY;
+            });
+            
+            // 添加缩放功能
+            let scale = 1;
+            document.getElementById('zoomIn').addEventListener('click', () => {
+                if (scale < 1.5) {
+                    scale += 0.1;
+                    container.style.transform = `scale(${scale})`;
+                }
+            });
+            
+            document.getElementById('zoomOut').addEventListener('click', () => {
+                if (scale > 0.6) {
+                    scale -= 0.1;
+                    container.style.transform = `scale(${scale})`;
+                }
+            });
+            
+            // 显示模态框
+            modal.style.display = 'flex';
+        }
+        
+        // 填充学生到座位表（并标记固定空位）
+        function fillStudents(emptySeats) {
+            // 保存固定空位
+            fixedEmptySeats = emptySeats;
+            localStorage.setItem('fixedEmptySeats', JSON.stringify(fixedEmptySeats));
+            
+            // 创建空位映射表
+            const emptyMap = Array(rows).fill().map(() => Array(cols).fill(false));
+            
+            // 标记用户选择的空位
+            for (const seatKey of emptySeats) {
+                const [row, col] = seatKey.split('-').map(Number);
+                if (row >= 0 && row < rows && col >= 0 && col < cols) {
+                    emptyMap[row][col] = true;
+                }
+            }
+            
+            // 填充学生
+            const newSeats = createEmptySeats();
+            let studentIndex = 0;
+            
+            // 按行顺序填充学生，跳过用户选择的空位
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
+                    // 如果这个位置是用户选择的空位，则标记为固定空位
+                    if (emptyMap[i][j]) {
+                        newSeats[i][j] = { 
+                            name: "", 
+                            gender: "",
+                            isFixedEmpty: true
+                        };
+                        continue;
+                    }
+                    
+                    // 填充学生
+                    if (studentIndex < students.length) {
+                        newSeats[i][j] = {
+                            name: students[studentIndex].name,
+                            gender: students[studentIndex].gender,
+                            isFixedEmpty: false
+                        };
+                        studentIndex++;
+                    } else {
+                        newSeats[i][j] = { 
+                            name: "", 
+                            gender: "",
+                            isFixedEmpty: false
+                        };
+                    }
+                }
+            }
+            
+            // 更新座位数据
+            seats = newSeats;
+            localStorage.setItem('classroomSeats', JSON.stringify(seats));
+            renderSeatingChart();
+            
+            alert(`成功导入 ${students.length} 名学生数据！已设置 ${emptySeats.length} 个固定空位。`);
+        }
+        
+        // 生成Excel模板
+        function generateTemplate() {
+            const templateData = [
+                ['序号', '性别', '姓名'],
+                [1, '男', '张三'],
+                [2, '女', '李四'],
+                [3, '男', '王五'],
+                [4, '女', '赵六'],
+                [5, '男', '钱七'],
+                [6, '女', '孙八'],
+                [7, '男', '周九'],
+                [8, '女', '吴十'],
+                [9, '男', '郑十一'],
+                [10, '女', '王十二']
+            ];
+            
+            const worksheet = XLSX.utils.aoa_to_sheet(templateData);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, '学生名单');
+            
+            // 生成Excel文件并下载
+            XLSX.writeFile(workbook, '学生名单模板.xlsx');
+        }
+        
+        // 随机排座位（保留固定空位）
+        function randomizeSeats() {
+            // 收集所有学生（非空位且非固定空位）
+            const allStudents = [];
+            seats.forEach(row => {
+                row.forEach(seat => {
+                    if (seat.name && !seat.isFixedEmpty) {
+                        allStudents.push(seat);
+                    }
+                });
+            });
+            
+            // 如果没有学生，则提示
+            if (allStudents.length === 0) {
+                alert("当前没有学生数据，请先导入学生名单！");
+                return;
+            }
+            
+            // 检查是否启用性别隔离
+            const genderSeparationEnabled = document.getElementById('genderSeparation').checked;
+            
+            // 尝试次数限制
+            const maxAttempts = genderSeparationEnabled ? 1000 : 1;
+            let validArrangement = null;
+            
+            for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                // 打乱学生顺序
+                const shuffledStudents = [...allStudents];
+                shuffleArray(shuffledStudents);
+                
+                // 创建新的座位表（保留固定空位）
+                const newSeats = createEmptySeats();
+                
+                // 复制固定空位到新座位表
+                seats.forEach((row, i) => {
+                    row.forEach((seat, j) => {
+                        if (seat.isFixedEmpty) {
+                            newSeats[i][j] = {
+                                name: "",
+                                gender: "",
+                                isFixedEmpty: true
+                            };
+                        }
+                    });
+                });
+                
+                // 填充学生（跳过固定空位）
+                let studentIndex = 0;
+                for (let i = 0; i < rows; i++) {
+                    for (let j = 0; j < cols; j++) {
+                        // 如果是固定空位，则跳过
+                        if (newSeats[i][j].isFixedEmpty) continue;
+                        
+                        // 如果还有学生，则填充
+                        if (studentIndex < shuffledStudents.length) {
+                            newSeats[i][j] = {
+                                name: shuffledStudents[studentIndex].name,
+                                gender: shuffledStudents[studentIndex].gender,
+                                isFixedEmpty: false
+                            };
+                            studentIndex++;
+                        }
+                    }
+                }
+                
+                // 如果不要求性别隔离，或者当前排列符合条件
+                if (!genderSeparationEnabled || checkGenderSeparation(newSeats)) {
+                    validArrangement = newSeats;
+                    break;
+                }
+            }
+            
+            if (validArrangement) {
+                seats = validArrangement;
+                localStorage.setItem('classroomSeats', JSON.stringify(seats));
+                renderSeatingChart();
+                
+                if (genderSeparationEnabled) {
+                    alert(`已完成 ${allStudents.length} 名学生的随机排座，固定空位保持不变，男女生不相邻！`);
+                } else {
+                    alert(`已完成 ${allStudents.length} 名学生的随机排座，固定空位保持不变！`);
+                }
+            } else {
+                // 最后一次尝试的结果
+                const shuffledStudents = [...allStudents];
+                shuffleArray(shuffledStudents);
+                const newSeats = createEmptySeats();
+                
+                // 复制固定空位到新座位表
+                seats.forEach((row, i) => {
+                    row.forEach((seat, j) => {
+                        if (seat.isFixedEmpty) {
+                            newSeats[i][j] = {
+                                name: "",
+                                gender: "",
+                                isFixedEmpty: true
+                            };
+                        }
+                    });
+                });
+                
+                let studentIndex = 0;
+                for (let i = 0; i < rows; i++) {
+                    for (let j = 0; j < cols; j++) {
+                        if (newSeats[i][j].isFixedEmpty) continue;
+                        if (studentIndex < shuffledStudents.length) {
+                            newSeats[i][j] = {
+                                name: shuffledStudents[studentIndex].name,
+                                gender: shuffledStudents[studentIndex].gender,
+                                isFixedEmpty: false
+                            };
+                            studentIndex++;
+                        }
+                    }
+                }
+                
+                seats = newSeats;
+                localStorage.setItem('classroomSeats', JSON.stringify(seats));
+                renderSeatingChart();
+                
+                alert(`尝试多次后无法找到完全符合男女生不相邻的排座方案，已使用最后一次随机结果（固定空位保持不变）。`);
+            }
+        }
+        
+        // 检查男女生是否相邻
+        function checkGenderSeparation(seats) {
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
+                    const current = seats[i][j];
+                    if (!current.name || current.isFixedEmpty) continue;
+                    
+                    // 检查右边邻居
+                    if (j < cols - 1) {
+                        const right = seats[i][j+1];
+                        if (right.name && !right.isFixedEmpty && right.gender !== current.gender) {
+                            return false;
+                        }
+                    }
+                    
+                    // 检查下面邻居
+                    if (i < rows - 1) {
+                        const below = seats[i+1][j];
+                        if (below.name && !below.isFixedEmpty && below.gender !== current.gender) {
+                            return false;
+                        }
+                    }
+                }
+            }
+            return true;
+        }
+        
+        // 数组随机打乱算法
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+        
+        // 重置座位表
+        function resetSeats() {
+            if (confirm("确定要重置座位表吗？所有学生数据和固定空位将被清除！")) {
+                seats = createEmptySeats();
+                fixedEmptySeats = [];
+                localStorage.setItem('classroomSeats', JSON.stringify(seats));
+                localStorage.setItem('fixedEmptySeats', JSON.stringify(fixedEmptySeats));
+                renderSeatingChart();
+                alert("座位表已重置，所有位置已清空！");
+            }
+        }
+        
+        // 更新座位布局
+        function updateSeatingLayout() {
+            const newRows = parseInt(document.getElementById('rowsInput').value) || 9;
+            const newCols = parseInt(document.getElementById('colsInput').value) || 8;
+            
+            if (newRows < 1 || newRows > 20 || newCols < 1 || newCols > 20) {
+                alert("行数和列数必须在1到20之间！");
+                return;
+            }
+            
+            // 更新全局变量
+            rows = newRows;
+            cols = newCols;
+            
+            // 保存到localStorage
+            localStorage.setItem('classroomRows', rows);
+            localStorage.setItem('classroomCols', cols);
+            
+            // 创建新的座位表
+            seats = createEmptySeats();
+            fixedEmptySeats = [];
+            
+            // 保存并渲染
+            localStorage.setItem('classroomSeats', JSON.stringify(seats));
+            localStorage.setItem('fixedEmptySeats', JSON.stringify(fixedEmptySeats));
+            renderSeatingChart();
+            
+            alert(`座位布局已更新为 ${rows} 行 × ${cols} 列！`);
+        }
+        
+        // 初始化
+        document.addEventListener('DOMContentLoaded', () => {
+            // 从localStorage加载行列设置
+            const savedRows = localStorage.getItem('classroomRows');
+            const savedCols = localStorage.getItem('classroomCols');
+            
+            if (savedRows) {
+                rows = parseInt(savedRows);
+                document.getElementById('rowsInput').value = rows;
+            }
+            
+            if (savedCols) {
+                cols = parseInt(savedCols);
+                document.getElementById('colsInput').value = cols;
+            }
+            
+            // 从localStorage加载座位数据
+            const savedSeats = localStorage.getItem('classroomSeats');
+            const savedFixedSeats = localStorage.getItem('fixedEmptySeats');
+            
+            if (savedSeats) {
+                seats = JSON.parse(savedSeats);
+            } else {
+                seats = createEmptySeats();
+            }
+            
+            if (savedFixedSeats) {
+                fixedEmptySeats = JSON.parse(savedFixedSeats);
+            }
+            
+            // 渲染座位表
+            renderSeatingChart();
+            
+            // 绑定按钮事件
+            document.getElementById('saveBtn').addEventListener('click', saveSeatingChart);
+            document.getElementById('exportExcelBtn').addEventListener('click', exportSeatingChartToExcel);
+            document.getElementById('fileInput').addEventListener('change', handleFileUpload);
+            document.getElementById('downloadTemplate').addEventListener('click', function(e) {
+                e.preventDefault();
+                generateTemplate();
+            });
+            document.getElementById('randomBtn').addEventListener('click', randomizeSeats);
+            document.getElementById('resetBtn').addEventListener('click', resetSeats);
+            document.getElementById('updateLayoutBtn').addEventListener('click', updateSeatingLayout);
+            
+            // 绑定设置变化事件
+            document.getElementById('genderSeparation').addEventListener('change', function() {
+                if (this.checked && !checkGenderSeparation(seats)) {
+                    alert("注意：当前座位表存在男女生相邻的情况！");
+                }
+            });
+            
+            // 绑定模态框事件
+            document.getElementById('confirmSelection').addEventListener('click', function() {
+                if (selectedEmptySeats.length === requiredEmptySeats) {
+                    document.getElementById('emptySeatsModal').style.display = 'none';
+                    fillStudents(selectedEmptySeats);
+                } else {
+                    alert(`请选择 ${requiredEmptySeats} 个空位位置！`);
+                }
+            });
+            
+            document.getElementById('cancelSelection').addEventListener('click', function() {
+                document.getElementById('emptySeatsModal').style.display = 'none';
+                alert("导入已取消");
+            });
+        });
+    </script>
+</body>
+</html>
