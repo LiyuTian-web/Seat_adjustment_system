@@ -17,6 +17,7 @@
 7. 重置座位：点击"重置座位表"按钮清除所有学生数据
 
 座位表数据会自动保存在浏览器中，下次打开时恢复
+
 在线使用网站：https://liyutian-web.github.io/Seat_adjustment_system/Seat_adjustment.html
 
 ## 页面展示
